@@ -28,6 +28,6 @@ fmodule.so :
 	gfortran -c $(FFLAGS) $< -o $@
 
 clean:
-	rm -f *.mod *.o *.so *.tsk *.tsk.dSYM *.so.dSYM ABINIT-common/*.o
-
+	rm -f *.mod *.o *.so *.tsk *.tsk.dSYM *.so.dSYM
+	
 	
