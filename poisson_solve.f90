@@ -2610,26 +2610,12 @@ subroutine Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
 
     end do loop_gauss1
 
- !De-allocations
- i_all=-product(shape(kernel_scf))*kind(kernel_scf)
- deallocate(kernel_scf,stat=i_stat)
- i_all=-product(shape(kern_1_scf))*kind(kern_1_scf)
- deallocate(kern_1_scf,stat=i_stat)
- i_all=-product(shape(x_scf))*kind(x_scf)
- deallocate(x_scf,stat=i_stat)
- i_all=-product(shape(y_scf))*kind(y_scf)
- deallocate(y_scf,stat=i_stat)
-
 !!!!END KERNEL CONSTRUCTION
 
 !!$ if(0 .eq. 0) print *,"Do a 3D PHalFFT for the kernel"
 
  call kernelfft(nfft1,nfft2,nfft3,nker1,nker2,nker3,n1k,n2k,n3k,&
       kp,karray)
-
- !De-allocations
- i_all=-product(shape(kp))*kind(kp)
- deallocate(kp,stat=i_stat)
 
 end subroutine Kernel
 
@@ -3206,12 +3192,10 @@ subroutine PSolver(n01,hx,rhopot,karray,n1k,n2k,n3k)
   implicit none
   integer, intent(in) :: n01,n1k,n2k,n3k
   real(kind=8), intent(in) :: hx
-!  real(kind=8), dimension(*), intent(in) :: karray
   real(kind=8), dimension(n1k,n2k,n3k), intent(in) :: karray
   real(kind=8), dimension(*), intent(inout) :: rhopot
   !local variables
   integer :: m1,m2,m3,md1,md2,md3,n1,n2,n3,nd1,nd2,nd3
-!  integer :: i_all,i_stat,ierr,ind,ind2,ind3,ind4
   real(kind=8) :: scal
   real(kind=8), dimension(:,:,:), allocatable :: zf
 
@@ -3222,7 +3206,6 @@ subroutine PSolver(n01,hx,rhopot,karray,n1k,n2k,n3k)
     call copy3Darray(n01,rhopot,zf)
 
     !this routine builds the values for each process of the potential (zf), multiplying by scal
-    !hgrid=max(hx,hx,hx)
     scal=hx*hx*hx/real(n1*n2*n3,kind=8)
     call F_PoissonSolver(n1,n2,n3,nd1,nd2,nd3,md1,md2,md3,karray,zf(1,1,1),scal)
 

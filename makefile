@@ -1,5 +1,5 @@
 
-FFLAGS=-freal-4-real-8 -fPIC -O3
+FFLAGS=-freal-4-real-8 -fPIC -O3 -march=native
 #FFLAGS=-freal-4-real-8 -fPIC -fbounds-check -fbacktrace -Wall -Wextra  -pedantic  -fcheck=all -Warray-temporaries -fimplicit-none -ffree-line-length-0 -ffpe-trap=zero,overflow -finit-real=nan -Wconversion -pg -g -O0    
 
 SRC08=$(wildcard *.f08)
