@@ -1689,19 +1689,15 @@ subroutine ctrig(n,trig,after,before,now,isign,ic)
 
 end subroutine ctrig
 
-subroutine test_functions(n01,n02,n03,acell,a_gauss,hx,hy,hz,&
-     density,potential)
+subroutine test_functions(n01,n02,n03,a_gauss,hx,hy,hz,density,potential)
   implicit none
   integer, intent(in) :: n01,n02,n03
-  real(kind=8), intent(in) :: acell,a_gauss,hx,hy,hz
+  real(kind=8), intent(in) :: a_gauss,hx,hy,hz
   real(kind=8), dimension(n01,n02,n03), intent(out) :: density,potential
 
   !local variables
-  integer :: i1,i2,i3,nu,ifx,ify,ifz
-  real(kind=8) :: x,x1,x2,x3,y,length,denval,pi,a2,derf,hgrid,factor,r,r2
-  real(kind=8) :: fx,fx2,fy,fy2,fz,fz2,a,ax,ay,az,bx,by,bz,tt,potion_fac
-
-
+  integer :: i1,i2,i3
+  real(kind=8) :: x1,x2,x3,pi,a2,derf,factor,r,r2
 
      !grid for the free BC case
      !hgrid=max(hx,hy,hz)
@@ -1732,12 +1728,11 @@ subroutine test_functions(n01,n02,n03,acell,a_gauss,hx,hy,hz,&
      end do
 end subroutine test_functions
 
-subroutine gequad(nterms,p,w,urange,drange,acc)
+subroutine gequad(nterms,p,w)
 !
   implicit none
-  real(kind=8) :: urange,drange,acc
   integer :: nterms
-  real(kind=8) :: p(*),w(*)
+  real(kind=8) :: p(nterms),w(nterms)
 !
 !       range [10^(-9),1] and accuracy ~10^(-8);
 !
@@ -1920,11 +1915,7 @@ subroutine gequad(nterms,p,w,urange,drange,acc)
   w(87)=0.576182522545327589d0
   w(88)=0.596688817388997178d0
   w(89)=0.607879901151108771d0
-!
-  urange = 1.d0
-  drange=1d-08
-  acc   =1d-08
-!
+
 end subroutine gequad
 
 subroutine scramble_unpack(i1,j2,lot,nfft,n1,n3,md2,nd3,zw,zmpi2,cosinarr)
@@ -1933,7 +1924,7 @@ subroutine scramble_unpack(i1,j2,lot,nfft,n1,n3,md2,nd3,zw,zmpi2,cosinarr)
   integer, intent(in) :: i1,j2,lot,nfft,n1,n3,md2,nd3
   real(kind=8), dimension(2,lot,n3/2), intent(in) :: zw
   real(kind=8), dimension(2,n3/2), intent(in) :: cosinarr
-  real(kind=8), dimension(2,n1,md2/1,nd3), intent(out) :: zmpi2
+  real(kind=8), dimension(2,n1,md2,nd3), intent(out) :: zmpi2
   !Local variables
   integer :: i3,i,ind1,ind2
   real(kind=8) ::  a,b,c,d,cp,sp,feR,feI,foR,foI,fR,fI
@@ -2006,11 +1997,11 @@ end subroutine realcopy
 subroutine mpiswitch(j3,nfft,Jp2st,J2st,lot,n1,nd2,nd3,zmpi1,zw)
   implicit none
   integer      :: nfft,lot,n1,nd2,nd3, I1, J2, Jp2, mfft, j3, Jp2st,J2st
-  real(kind=8) :: zmpi1(2,n1,nd2/1,nd3/1,1),zw(2,lot,n1)
+  real(kind=8) :: zmpi1(2,n1,nd2,nd3,1),zw(2,lot,n1)
 
   mfft=0
   do Jp2=Jp2st,1
-     do J2=J2st,nd2/1
+     do J2=J2st,nd2
         mfft=mfft+1
         if (mfft.gt.nfft) then
            Jp2st=Jp2
@@ -2055,24 +2046,20 @@ subroutine kernelfft(n1,n2,n3,nd1,nd2,nd3,nk1,nk2,nk3,zf,zr)
 integer, parameter :: ncache_optimal=8*1024
 !flag that states if we must perform the timings or not
 !definitions of the timing variambles just in case
-integer, parameter :: timing_flag=0
-integer :: count_time1,count_time2,count_rate,count_max,number_time,index_time
-real(kind=8) :: time_b0,time_b1,serial_time,parallel_time
 
   !Arguments
   integer, intent(in) :: n1,n2,n3,nd1,nd2,nd3,nk1,nk2,nk3
-  real(kind=8), dimension(n1/2+1,n3/2+1,nd2/1), intent(in) :: zf
-  real(kind=8), dimension(nk1,nk2,nk3/1), intent(inout) :: zr
+  real(kind=8), dimension(n1/2+1,n3/2+1,nd2), intent(in) :: zf
+  real(kind=8), dimension(nk1,nk2,nk3), intent(inout) :: zr
   !Local variables
   !Maximum number of points for FFT (should be same number in fft3d routine)
   integer, parameter :: nfft_max=24000
   integer :: ncache,lzt,lot,ma,mb,nfft,ic1,ic2,ic3,Jp2st,J2st
-  integer :: j2,j3,i1,i3,i,j,inzee,ierr,i_all,i_stat,k
+  integer :: j2,j3,i1,i3,i,j,inzee,i_stat
   real(kind=8) :: twopion
   !work arrays for transpositions
   real(kind=8), dimension(:,:,:), allocatable :: zt
   !work arrays for MPI
-  real(kind=8), dimension(:,:,:,:,:), allocatable :: zmpi1
   real(kind=8), dimension(:,:,:,:), allocatable :: zmpi2
   !cache work array
   real(kind=8), dimension(:,:,:), allocatable :: zw
@@ -2112,7 +2099,7 @@ real(kind=8) :: time_b0,time_b1,serial_time,parallel_time
   allocate(before3(7),stat=i_stat)
   allocate(zw(2,ncache/4,2),stat=i_stat)
   allocate(zt(2,lzt,n1),stat=i_stat)
-  allocate(zmpi2(2,n1,nd2/1,nd3),stat=i_stat)
+  allocate(zmpi2(2,n1,nd2,nd3),stat=i_stat)
   allocate(cosinarr(2,n3/2),stat=i_stat)
 
   !calculating the FFT work arrays (beware on the HalFFT in n3 dimension)
@@ -2271,7 +2258,7 @@ subroutine F_FFT_dimensions(n01,n02,n03,m1,m2,m3,n1,n2,n3,md1,md2,md3,nd1,nd2,nd
  md1=n1/2
  md2=n2/2
  md3=n3/2
-151 if (1*(md2/1).lt.n2/2) then
+151 if (1*(md2).lt.n2/2) then
     md2=md2+1
     goto 151
  endif
@@ -2395,10 +2382,10 @@ subroutine scaling_function(itype,nd,nrange,a,x)
 end subroutine scaling_function
 
 
-subroutine scf_recursion(itype,n_iter,n_range,kernel_scf,kern_1_scf)
+subroutine scf_recursion(n_iter,n_range,kernel_scf,kern_1_scf)
     implicit none
     !Arguments
-    integer, intent(in) :: itype,n_iter,n_range
+    integer, intent(in) :: n_iter,n_range
     real(kind=8), intent(inout) :: kernel_scf(-n_range:n_range)
     real(kind=8), intent(out) :: kern_1_scf(-n_range:n_range)
     !Local variables
@@ -2462,7 +2449,7 @@ subroutine scf_recursion(itype,n_iter,n_range,kernel_scf,kern_1_scf)
 
 end subroutine scf_recursion
 
-subroutine Free_Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
+subroutine Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
      hx,hy,hz,itype_scf,karray)
 
  implicit none
@@ -2488,13 +2475,13 @@ subroutine Free_Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
  real(kind=8), dimension(:,:,:), allocatable :: kp
 
 
- real(kind=8) :: ur_gauss,dr_gauss,acc_gauss,pgauss,kern,a_range,kern_tot
- real(kind=8) :: pi,factor,factor2,urange,dx,absci,p0gauss,weight,p0_cell,u1,u2,u3
- real(kind=8) :: a1,a2,a3,amax,ratio,hgrid,pref1,pref2,pref3,p01,p02,p03,kern1,kern2,kern3
+ real(kind=8) :: pgauss,kern,a_range
+ real(kind=8) :: factor,factor2,dx,absci,p0gauss,p0_cell
+ real(kind=8) :: a1,a2,a3,hgrid
  integer :: n_scf,nker1,nker2,nker3
  integer :: i_gauss,n_range,n_cell,istart,iend,istart1
- integer :: i,j,n_iter,i_iter,ind,i1,i2,i3,i_kern,i_stat,i_all
- integer :: i01,i02,i03,n1h,n2h,n3h,nit1,nit2,nit3
+ integer :: i,n_iter,i1,i2,i3,i_kern,i_stat,i_all
+ integer :: i01,i02,i03,n1h,n2h,n3h
 
  !grid spacing
  hgrid=max(hx,hy,hz)
@@ -2516,13 +2503,13 @@ subroutine Free_Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
  nker3=nfft3/2+1
 
  !this will be the array of the kernel in the real space
- allocate(kp(n1h+1,n3h+1,nker2/1),stat=i_stat)
+ allocate(kp(n1h+1,n3h+1,nker2),stat=i_stat)
 
  !defining proper extremes for the calculation of the
  !local part of the kernel
 
  istart=1
- iend=min((1)*nker2/1,n2h+n03)
+ iend=min((1)*nker2,n2h+n03)
 
  istart1=n2h-n03+2
 
@@ -2546,7 +2533,7 @@ subroutine Free_Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
 
 
  !Initialization of the gaussian (Beylkin)
- call gequad(n_gauss,p_gauss,w_gauss,ur_gauss,dr_gauss,acc_gauss)
+ call gequad(n_gauss,p_gauss,w_gauss)
  !In order to have a range from a_range=sqrt(a1*a1+a2*a2+a3*a3)
  !(biggest length in the cube)
  !We divide the p_gauss by a_range**2 and a_gauss by a_range
@@ -2605,7 +2592,7 @@ subroutine Free_Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
        end do
 
        !Start the iteration to go from p0gauss to pgauss
-       call scf_recursion(itype_scf,n_iter,n_range,kernel_scf,kern_1_scf)
+       call scf_recursion(n_iter,n_range,kernel_scf,kern_1_scf)
 
        !Add to the kernel (only the local part)
 
@@ -2644,16 +2631,15 @@ subroutine Free_Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
  i_all=-product(shape(kp))*kind(kp)
  deallocate(kp,stat=i_stat)
 
-end subroutine Free_Kernel
+end subroutine Kernel
 
 subroutine PS_dim4allocation(n01,n02,n03,n3d,n3p,n3pi,i3xcsh,i3s)
   implicit none
   integer, intent(in) :: n01,n02,n03
   integer, intent(out) :: n3d,n3p,n3pi,i3xcsh,i3s
   !local variables
-  integer, parameter :: nordgr=4
   integer :: m1,m2,m3,md1,md2,md3,n1,n2,n3,nd1,nd2,nd3
-  integer :: istart,iend,nxc,nwb,nxt,nxcl,nxcr,nwbl,nwbr
+  integer :: istart,iend
 
 
   !calculate the dimensions wrt the geocode
@@ -2700,7 +2686,7 @@ end subroutine halfill_upcorn
 subroutine mpiswitch_upcorn(j3,nfft,Jp2stb,J2stb,lot,n1,md2,nd3,zmpi1,zw)
   implicit none
   integer :: j3,nfft,Jp2stb,J2stb,lot,n1,md2,nd3
-  real(kind=8) :: zmpi1(2,n1/2,md2/1,nd3/1,1),zw(2,lot,n1)
+  real(kind=8) :: zmpi1(2,n1/2,md2,nd3,1),zw(2,lot,n1)
   integer :: mfft, Jp2, J2, I1
 
 ! WARNING: Assuming that high frequencies are in the corners
@@ -2708,7 +2694,7 @@ subroutine mpiswitch_upcorn(j3,nfft,Jp2stb,J2stb,lot,n1,md2,nd3,zmpi1,zw)
 
   mfft=0
   do Jp2=Jp2stb,1
-     do J2=J2stb,md2/1
+     do J2=J2stb,md2
         mfft=mfft+1
         if (mfft.gt.nfft) then
         Jp2stb=Jp2
@@ -2736,7 +2722,7 @@ subroutine multkernel(nd1,nd2,n1,n2,lot,nfft,jS,pot,zw)
   real(kind=8), dimension(nd1,nd2), intent(in) :: pot
   real(kind=8), dimension(2,lot,n2), intent(inout) :: zw
   !Local variables
-  integer :: j,j1,i2,j2,isign
+  integer :: j,j1,i2,j2
 
   !Body
 
@@ -2833,7 +2819,7 @@ subroutine unmpiswitch_downcorn(j3,nfft,Jp2stf,J2stf,lot,n1,md2,nd3,zw,zmpi1)
 
   mfft=0
   do Jp2=Jp2stf,1
-     do J2=J2stf,md2/1
+     do J2=J2stf,md2
         mfft=mfft+1
         if (mfft.gt.nfft) then
            Jp2stf=Jp2
@@ -2873,7 +2859,7 @@ subroutine unscramble_pack(i1,j2,lot,nfft,n1,n3,md2,nd3,zmpi2,zw,cosinarr)
   integer, intent(in) :: i1,j2,lot,nfft,n1,n3,md2,nd3
   real(kind=8), dimension(2,lot,n3/2), intent(out) :: zw
   real(kind=8), dimension(2,n3/2), intent(in) :: cosinarr
-  real(kind=8), dimension(2,n1,md2/1,nd3), intent(in) :: zmpi2
+  real(kind=8), dimension(2,n1,md2,nd3), intent(in) :: zmpi2
   !Local variables
   integer :: i3,i,indA,indB
   real(kind=8) ::  a,b,c,d,cp,sp,re,ie,ro,io,rh,ih
@@ -2910,9 +2896,6 @@ subroutine F_PoissonSolver(n1,n2,n3,nd1,nd2,nd3,md1,md2,md3,pot,zf&
 integer, parameter :: ncache_optimal=8*1024
 !flag that states if we must perform the timings or not
 !definitions of the timing variambles just in case
-integer, parameter :: timing_flag=0
-integer :: count_time1,count_time2,count_rate,count_max,number_time,index_time
-real(kind=8) :: time_b0,time_b1,serial_time,parallel_time
 
   !Arguments
   integer, intent(in) :: n1,n2,n3,nd1,nd2,nd3,md1,md2,md3
@@ -2924,12 +2907,11 @@ real(kind=8) :: time_b0,time_b1,serial_time,parallel_time
   !Maximum number of points for FFT (should be same number in fft3d routine)
   integer, parameter :: nfft_max=24000
   integer :: ncache,lzt,lot,ma,mb,nfft,ic1,ic2,ic3,Jp2stb,J2stb,Jp2stf,J2stf
-  integer :: j1,j2,j3,i1,i2,i3,i,j,inzee,ierr,i_all,i_stat
+  integer :: j2,j3,i1,i3,i,j,inzee,i_stat
   real(kind=8) :: twopion!,ehartreetmp
   !work arrays for transpositions
   real(kind=8), dimension(:,:,:), allocatable :: zt
   !work arrays for MPI
-  real(kind=8), dimension(:,:,:,:,:), allocatable :: zmpi1
   real(kind=8), dimension(:,:,:,:), allocatable :: zmpi2
   !cache work array
   real(kind=8), dimension(:,:,:), allocatable :: zw
@@ -2980,7 +2962,7 @@ real(kind=8) :: time_b0,time_b1,serial_time,parallel_time
   allocate(before3(7),stat=i_stat)
   allocate(zw(2,ncache/4,2),stat=i_stat)
   allocate(zt(2,lzt,n1),stat=i_stat)
-  allocate(zmpi2(2,n1,md2/1,nd3),stat=i_stat)
+  allocate(zmpi2(2,n1,md2,nd3),stat=i_stat)
   allocate(cosinarr(2,n3/2),stat=i_stat)
 
   !calculating the FFT work arrays (beware on the HalFFT in n3 dimension)
@@ -3020,11 +3002,6 @@ real(kind=8) :: time_b0,time_b1,serial_time,parallel_time
      stop
   endif
 
-print *,"md2",md2
-print *,"lot",lot
-print *,"(n1/2)",(n1/2)
-print *,"zf",size(zf)
-
   do j2=1,md2
      !this condition ensures that we manage only the interesting part for the FFT
      if (j2.le.n2/2) then
@@ -3056,9 +3033,9 @@ print *,"zf",size(zf)
   end do
 
   !now each process perform complete convolution of its planes
-  do j3=1,nd3/1
+  do j3=1,nd3
      !this condition ensures that we manage only the interesting part for the FFT
-     if (0*(nd3/1)+j3.le.n3/2+1) then
+     if (0*(nd3)+j3.le.n3/2+1) then
       Jp2stb=1
       J2stb=1
       Jp2stf=1
@@ -3178,14 +3155,9 @@ print *,"zf",size(zf)
      endif
   end do
 
-print *,"md2",md2
-print *,"(n1/2)",(n1/2)
-print *,"zf",size(zf)
-
   !transform along z axis
   !input: I1,J2,i3,(Jp2)
   lot=ncache/(2*n3)
-print *,"lot",lot
   do j2=1,md2
      !this condition ensures that we manage only the interesting part for the FFT
      if (j2.le.n2/2) then
@@ -3220,178 +3192,52 @@ print *,"lot",lot
   end do
 end subroutine F_PoissonSolver
 
-subroutine xc_energy(m1,m2,m3,md1,md2,md3,nxc,nwb,nxt,nwbl,nwbr,&
-     nxcl,nxcr,hx,hy,hz,rhopot,sumpion,zf,zfionxc)
-
+subroutine copy3Darray(n,source,dest)
   implicit none
+  integer, intent(in) :: n
+  real(kind=8), dimension(n,n,n), intent(in) :: source
+  real(kind=8), dimension(n,n,n), intent(out) :: dest
 
-  !Arguments----------------------
-  logical, intent(in) :: sumpion
-  integer, intent(in) :: m1,m2,m3,nxc,nwb,nxcl,nxcr,nxt,md1,md2,md3
-  integer, intent(in) :: nwbl,nwbr
-  real(kind=8), intent(in) :: hx,hy,hz
-  real(kind=8), dimension(m1,m3,nxt,1), intent(in) :: rhopot
-  real(kind=8), dimension(md1,md3,md2), intent(out) :: zf
-  real(kind=8), dimension(md1,md3,md2,1), intent(out) :: zfionxc
+  dest(1:n,1:n,1:n) = source(1:n,1:n,1:n)
 
-  !Local variables----------------
-  real(kind=8), dimension(:,:,:), allocatable :: exci,d2vxci
-  real(kind=8), dimension(:,:,:,:), allocatable :: vxci,dvxci,dvxcdgr
-  real(kind=8), dimension(:,:,:,:,:), allocatable :: gradient
-  real(kind=8) :: elocal,vlocal,rho,pot,potion,hgrid,facpotion,sfactor
-  integer :: npts,i_all,order,offset,i_stat,ispden
-  integer :: i1,i2,i3,j1,j2,j3,jp2,jpp2,jppp2
-  integer :: ndvxc,nvxcdgr,ngr2
+end subroutine copy3Darray
 
-
-  !Body
-
-  !check for the dimensions
-  if (  nwb/=nxcl+nxc+nxcr-2 .or. nxt/=nwbr+nwb+nwbl) then
-     print *,'the XC dimensions are not correct'
-     print *,'nxc,nwb,nxt,nxcl,nxcr,nwbl,nwbr',nxc,nwb,nxt,nxcl,nxcr,nwbl,nwbr
-     stop
-  end if
-
-  !these are always the same
-!  nspden=1
-  order=1
-
-  !useful for the freeBC case
-  hgrid=max(hx,hy,hz)
-
-  !starting point of the density array for the GGA cases in parallel
-  offset=nwbl+1
-
-     !case without XC terms
-     !distributing the density in the zf array
-     print *,"m1",m1
-     print *,"m3",m3
-     print *,"nxc",nxc
-     print *,"zf",size(zf)
-
-     do jp2=1,nxc
-        j2=offset+jp2+nxcl-2
-        jpp2=jp2
-        do j3=1,m3
-           do j1=1,m1
-              zf(j1,j3,jp2)=rhopot(j1,j3,j2,1)
-           end do
-           do j1=m1+1,md1
-              zf(j1,j3,jp2)=0.d0
-           end do
-        end do
-        do j3=m3+1,md3
-           do j1=1,md1
-              zf(j1,j3,jp2)=0.d0
-           end do
-        end do
-     end do
-     do jp2=nxc+1,md2
-        do j3=1,md3
-           do j1=1,md1
-              zf(j1,j3,jp2)=0.d0
-           end do
-        end do
-     end do
-
-end subroutine xc_energy
-
-subroutine PSolver(n01,n02,n03,hx,hy,hz,&
-     rhopot,karray,offset,n1k,n2k,n3k)
+subroutine PSolver(n01,hx,rhopot,karray,n1k,n2k,n3k)
   implicit none
-  integer, intent(in) :: n01,n02,n03,n1k,n2k,n3k
-  real(kind=8), intent(in) :: hx,hy,hz,offset
+  integer, intent(in) :: n01,n1k,n2k,n3k
+  real(kind=8), intent(in) :: hx
 !  real(kind=8), dimension(*), intent(in) :: karray
   real(kind=8), dimension(n1k,n2k,n3k), intent(in) :: karray
   real(kind=8), dimension(*), intent(inout) :: rhopot
   !local variables
-  integer, parameter :: nordgr=4 !the order of the finite-difference gradient (fixed)
   integer :: m1,m2,m3,md1,md2,md3,n1,n2,n3,nd1,nd2,nd3
-  integer :: i_all,i_stat,ierr,ind,ind2,ind3,ind4
-  integer :: i1,i2,i3,j2,istart,iend,i3start,jend,jproc,i3xcsh,is_step,i4,ind2nd
-  integer :: nxc,nwbl,nwbr,nxt,nwb,nxcl,nxcr,nlim,j1,j3,jp2,jpp2,offset2
-  real(kind=8) :: scal,newoffset,factor,hgrid
+!  integer :: i_all,i_stat,ierr,ind,ind2,ind3,ind4
+  real(kind=8) :: scal
   real(kind=8), dimension(:,:,:), allocatable :: zf
-  real(kind=8), dimension(:,:,:,:), allocatable :: zfionxc
-  integer, dimension(:,:), allocatable :: gather_arr
-  real(kind=8), dimension(:), allocatable :: energies_mpi,rhopot_G
 
-  !calculate the dimensions wrt the geocode
-          write(*,'(1x,a,3(i5),a,i5,a,i3,a)',advance='no')&
-          'PSolver, free  BC, dimensions: ',n01,n02,n03,'   proc',1,'   0:',0,' ...'
-     call F_FFT_dimensions(n01,n02,n03,m1,m2,m3,n1,n2,n3,md1,md2,md3,nd1,nd2,nd3)
+    call F_FFT_dimensions(n01,n01,n01,m1,m2,m3,n1,n2,n3,md1,md2,md3,nd1,nd2,nd3)
 
-  !array allocations
-  i_all=0
-  allocate(zf(md1,md3,md2),stat=i_stat)
-  allocate(zfionxc(md1,md3,md2,1),stat=i_stat)
+    allocate(zf(md1,md3,md2))
 
-  istart=0*(md2/1)
-  iend=min((0+1)*md2/1,m2)
-  nxc=iend-istart
+    call copy3Darray(n01,rhopot,zf)
 
-    nwbl=0
-    nwbr=0
-    nxcl=1
-    nxcr=1
-
-  nwb=nxcl+nxc+nxcr-2
-  nxt=nwbr+nwb+nwbl
-
-     !starting address of rhopot in the case of global i/o
-     i3start=istart+2-nxcl-nwbl
-
-  !calculate the actual limit of the array for the zero padded FFT
-     nlim=n2/2
-
-!!$  print *,'density must go from',min(istart+1,m2),'to',iend,'with n2/2=',n2/2
-!!$  print *,'        it goes from',i3start+nwbl+nxcl-1,'to',i3start+nxc-1
-
-      call xc_energy(m1,m2,m3,md1,md2,md3,nxc,nwb,nxt,nwbl,nwbr,nxcl,nxcr,&
-           hx,hy,hz,rhopot(1+n01*n02*(i3start-1)),.true.,zf,zfionxc)
-
-  !this routine builds the values for each process of the potential (zf), multiplying by scal
-    !hgrid=max(hx,hy,hz)
-    scal=hx*hy*hz/real(n1*n2*n3,kind=8)
+    !this routine builds the values for each process of the potential (zf), multiplying by scal
+    !hgrid=max(hx,hx,hx)
+    scal=hx*hx*hx/real(n1*n2*n3,kind=8)
     call F_PoissonSolver(n1,n2,n3,nd1,nd2,nd3,md1,md2,md3,karray,zf(1,1,1),scal)
-    factor=0.5d0*hx*hy*hz!hgrid**3
 
-
-  !the value of the shift depends on the distributed i/o or not
-    i3xcsh=istart
-    is_step=n01*n02*n03
-
-  !recollect the final data
-     do j2=1,nxc
-        i2=j2+i3xcsh !in this case the shift is always zero for a parallel run
-        ind3=(i2-1)*n01*n02
-        do i3=1,m3
-           ind2=(i3-1)*n01+ind3
-           do i1=1,m1
-              ind=i1+ind2
-              rhopot(ind)=zf(i1,i3,j2)
-           end do
-        end do
-     end do
-
-  write(*,'(a)')'done.'
+    call copy3Darray(n01,zf,rhopot)
 
 end subroutine PSolver
 
-subroutine solve( n, rho, V )
+subroutine solve( n, potential )
     integer, intent(in)                                 :: n
-    real ( kind = 8 ), dimension(n,n,n), intent(inout)      :: rho
-    real ( kind = 8 ), dimension(n,n,n), intent(out)        :: V
+    real ( kind = 8 ), dimension(n,n,n), intent(inout)      :: potential
 
-  real(kind=8), dimension(:,:,:), allocatable :: density,potential,karray
-  real(kind=8) :: hx,hy,hz,max_diff,length,eh,exc,vxc,hgrid,diff_parser,offset
-  real(kind=8) :: ehartree,eexcu,vexcu,diff_par,diff_ser
-  integer :: m1,m2,m3,md1,md2,md3,nd1,nd2,nd3,n1,n2,n3,itype_scf,i_all,i_stat
-  integer :: i1,i2,i3,j1,j2,j3,i1_max,i2_max,i3_max,ierr
-  integer :: i_allocated,l1,nsp1,nsp2,nsp3,n3d,n3p,n3pi,i3xcsh,i3s
-
-    V(:,:,:)=0
+    real(kind=8), dimension(:,:,:), allocatable :: karray
+    real(kind=8) :: hx,hy,hz,hgrid
+    integer :: m1,m2,m3,md1,md2,md3,nd1,nd2,nd3,n1,n2,n3,itype_scf
+    integer :: n3d,n3p,n3pi,i3xcsh,i3s
 
     hx=10.0/real(n,kind=8)
     hy=10.0/real(n,kind=8)
@@ -3405,28 +3251,13 @@ subroutine solve( n, rho, V )
 
     itype_scf=14
 
-    call Free_Kernel(n,n,n,n1,n2,n3,nd1,nd2,nd3,hx,hy,hz,itype_scf,karray)
+    call Kernel(n,n,n,n1,n2,n3,nd1,nd2,nd3,hx,hy,hz,itype_scf,karray)
 
-     !Allocations
-     !Density
-     allocate(density(n,n,n),stat=i_stat)
-     !Density then potential
-     allocate(potential(n,n,n),stat=i_stat)
+    !dimension needed for allocations
+    call PS_dim4allocation(n,n,n,n3d,n3p,n3pi,i3xcsh,i3s)
 
-     call test_functions(n,n,n,10.0,1.0,hx,hy,hz,density,potential)
-
-     print *,"max_diff",maxval(abs(potential(:,:,:)-density(:,:,:)))
-
-     offset=potential(1,1,1)
-
-     !dimension needed for allocations
-     call PS_dim4allocation(n,n,n,n3d,n3p,n3pi,i3xcsh,i3s)
-
-     !apply the Poisson Solver
-     call PSolver(n,n,n,hx,hy,hz,&
-            density,karray,offset,nd1,nd2,nd3)
-
-     print *,"max_diff",maxval(abs(potential(:,:,:)-density(:,:,:)))
+    !apply the Poisson Solver
+    call PSolver(n,hx,potential,karray,nd1,nd2,nd3)
 
 end subroutine solve
 

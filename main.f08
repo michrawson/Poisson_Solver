@@ -2,14 +2,19 @@
 program main
     implicit none
     integer, parameter                       :: n = 128
-    real ( kind = 8 ), dimension(n,n,n)      :: rho
-    real ( kind = 8 ), dimension(n,n,n)      :: V
+    real ( kind = 8 ), dimension(n,n,n) :: density,potential_true,potential
+    real(kind=8) :: hx,hy,hz
 
-    rho=0
-    V=0
+    hx=10.0/real(n,kind=8)
+    hy=10.0/real(n,kind=8)
+    hz=10.0/real(n,kind=8)
 
-    call solver( n, rho, V )
+    call test_functions(n,n,n,1.0,hx,hy,hz,density,potential_true)
 
-    print *,"V",V(1,1,1)
+    potential(:,:,:)=density(:,:,:)
+
+    call solver( n, potential )
+
+    print *,"max_diff",maxval(abs(potential(:,:,:)-potential_true(:,:,:)))
 
 end program main

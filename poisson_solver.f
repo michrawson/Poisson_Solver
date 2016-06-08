@@ -1,15 +1,13 @@
 C FILE: ARRAY.F
-      SUBROUTINE SOLVER(N,INPUT,RESULT)
+      SUBROUTINE SOLVER(N,POT)
 C
 C     INCREMENT THE FIRST ROW AND DECREMENT THE FIRST COLUMN OF A
 C
       INTEGER N
-      REAL*8 INPUT(N,N,N)
-Cf2py intent(inplace) INPUT
-      REAL*8 RESULT(N,N,N)
-Cf2py intent(out) RESULT
+      REAL*8 POT(N,N,N)
+Cf2py intent(inplace) POT
 
-      call solve( n, input, result )
+      call solve( n, pot )
 
       END
 
