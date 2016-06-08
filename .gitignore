@@ -1,0 +1,5 @@
+*.mod
+*.so
+*.tsk
+*.so.dSYM
+*.tsk.dSYM
