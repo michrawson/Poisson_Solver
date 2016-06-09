@@ -1,7 +1,7 @@
 
 program main
     implicit none
-    integer, parameter                       :: n = 128
+    integer, parameter                       :: n = 56
     real ( kind = 8 ), dimension(n,n,n) :: density,potential_true,potential
     real(kind=8) :: hx,hy,hz
 

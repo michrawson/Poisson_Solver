@@ -2382,12 +2382,12 @@ subroutine scaling_function(itype,nd,nrange,a,x)
 end subroutine scaling_function
 
 
-subroutine scf_recursion(n_iter,n_range,kernel_scf,kern_1_scf)
+subroutine scf_recursion(n_iter,n_range,kernel_scf)
     implicit none
     !Arguments
     integer, intent(in) :: n_iter,n_range
     real(kind=8), intent(inout) :: kernel_scf(-n_range:n_range)
-    real(kind=8), intent(out) :: kern_1_scf(-n_range:n_range)
+    real(kind=8) :: kern_1_scf(-n_range:n_range)
     !Local variables
     real(kind=8) :: kern,kern_tot
     integer :: i_iter,i,j,ind
@@ -2402,25 +2402,6 @@ subroutine scf_recursion(n_iter,n_range,kernel_scf,kern_1_scf)
          0.00310254096984863281D0,0.D0,-0.000423073768615722656D0,0.D0,&
          0.0000275373458862304687D0,0.d0,0.d0,0.d0&
          /)
-    real(kind=8), dimension(-m:m) ::  cg,cht,cgt
-
-    !******** coefficients for wavelet transform *********************
-    do i=-m,m
-       cht(i)=0.d0
-       cg(i)=0.d0
-       cgt(i)=0.d0
-    enddo
-
-    ! the normalization is chosen such that a constant function remains the same constant
-    ! on each level of the transform
-
-    cht( 0)=1.D0
-
-    ! g coefficients from h coefficients
-    do i=-m,m-1
-       cg(i+1)=cht(-i)*(-1.d0)**(i+1)
-       cgt(i+1)=ch(-i)*(-1.d0)**(i+1)
-    enddo
 
     !Start the iteration to go from p0gauss to pgauss
     loop_iter_scf: do i_iter=1,n_iter
@@ -2470,7 +2451,7 @@ subroutine Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
  real(kind=8), parameter :: p0_ref = 1.d0
  real(kind=8), dimension(n_gauss) :: p_gauss,w_gauss
 
- real(kind=8), dimension(:), allocatable :: kern_1_scf,x_scf ,y_scf
+ real(kind=8), dimension(:), allocatable :: x_scf ,y_scf
  real(kind=8), dimension(:,:), allocatable :: kernel_scf
  real(kind=8), dimension(:,:,:), allocatable :: kp
 
@@ -2480,7 +2461,7 @@ subroutine Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
  real(kind=8) :: a1,a2,a3,hgrid
  integer :: n_scf,nker1,nker2,nker3
  integer :: i_gauss,n_range,n_cell,istart,iend,istart1
- integer :: i,n_iter,i1,i2,i3,i_kern,i_stat,i_all
+ integer :: i,n_iter,i1,i2,i3,i_kern,i_stat
  integer :: i01,i02,i03,n1h,n2h,n3h
 
  !grid spacing
@@ -2551,7 +2532,6 @@ subroutine Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
  kp(:,:,:)=0.d0
 
  !Allocations
- allocate(kern_1_scf(-n_range:n_range),stat=i_stat)
  !add the treatment for inhomogeneous hgrids
     allocate(kernel_scf(-n_range:n_range,1),stat=i_stat)
 
@@ -2564,6 +2544,7 @@ subroutine Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
     loop_gauss1: do i_gauss=n_gauss,1,-1
        !Gaussian
        pgauss = p_gauss(i_gauss)
+
        !We calculate the number of iterations to go from pgauss to p0_ref
        n_iter = nint((log(pgauss) - log(p0_cell))/log(4.d0))
        if (n_iter <= 0)then
@@ -2592,7 +2573,7 @@ subroutine Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
        end do
 
        !Start the iteration to go from p0gauss to pgauss
-       call scf_recursion(n_iter,n_range,kernel_scf,kern_1_scf)
+       call scf_recursion(n_iter,n_range,kernel_scf)
 
        !Add to the kernel (only the local part)
 
@@ -2648,8 +2629,9 @@ end subroutine PS_dim4allocation
 
 subroutine halfill_upcorn(md1,md3,lot,nfft,n3,zf,zw)
   implicit none
-  integer :: md1,md3,lot,nfft,n3,i1,i3
+  integer :: md1, md3, lot, nfft, n3, i1, i3
   real(kind=8) :: zw(2,lot,n3/2),zf(md1,md3)
+
 ! WARNING: Assuming that high frequencies are in the corners
 !          and that n3 is multiple of 4
 !in principle we can relax this condition
@@ -2666,7 +2648,6 @@ subroutine halfill_upcorn(md1,md3,lot,nfft,n3,zf,zw)
         zw(2,i1,i3)=zf(i1,2*i3-n3/2)
      end do
   end do
-
 end subroutine halfill_upcorn
 
 subroutine mpiswitch_upcorn(j3,nfft,Jp2stb,J2stb,lot,n1,md2,nd3,zmpi1,zw)
@@ -2878,6 +2859,7 @@ end subroutine unscramble_pack
 subroutine F_PoissonSolver(n1,n2,n3,nd1,nd2,nd3,md1,md2,md3,pot,zf&
              ,scal)!,hgrid)!,ehartree)
   implicit none
+
 !value of ncache for the FFT routines
 integer, parameter :: ncache_optimal=8*1024
 !flag that states if we must perform the timings or not
@@ -2906,7 +2888,6 @@ integer, parameter :: ncache_optimal=8*1024
        ftrig1,ftrig2,ftrig3,cosinarr
   integer, dimension(:), allocatable :: after1,now1,before1, &
        after2,now2,before2,after3,now3,before3
-
 
   !Body
   ! check input
@@ -2997,6 +2978,7 @@ integer, parameter :: ncache_optimal=8*1024
            nfft=mb-ma+1
 
            !inserting real data into complex array of half lenght
+
            call halfill_upcorn(md1,md3,lot,nfft,n3,zf(i1,1,j2),zw(1,1,1))
 
            !performing FFT
@@ -3007,12 +2989,15 @@ integer, parameter :: ncache_optimal=8*1024
                    btrig3,after3(i),now3(i),before3(i),1)
               inzee=3-inzee
            enddo
+
            !output: I1,i3,J2,(Jp2)
 
            !unpacking FFT in order to restore correct result,
            !while exchanging components
            !input: I1,i3,J2,(Jp2)
+
            call scramble_unpack(i1,j2,lot,nfft,n1/2,n3,md2,nd3,zw(1,1,inzee),zmpi2,cosinarr)
+
            !output: I1,J2,i3,(Jp2)
         end do
      endif
@@ -3044,7 +3029,9 @@ integer, parameter :: ncache_optimal=8*1024
 
            !reverse index ordering, leaving the planes to be transformed at the end
            !input: I1,J2,j3,Jp2,(jp3)
-            call mpiswitch_upcorn(j3,nfft,Jp2stb,J2stb,lot,n1,md2,nd3,zmpi2,zw(1,1,1))
+
+           call mpiswitch_upcorn(j3,nfft,Jp2stb,J2stb,lot,n1,md2,nd3,zmpi2,zw(1,1,1))
+
            !output: J2,Jp2,I1,j3,(jp3)
 
            !performing FFT
@@ -3086,6 +3073,7 @@ integer, parameter :: ncache_optimal=8*1024
            !performing FFT
            !input: i1,I2,j3,(jp3)
            inzee=1
+
            do i=1,ic2
               call fftstp(lot,nfft,n2,lot,n2,zw(1,1,inzee),zw(1,1,3-inzee), &
                    btrig2,after2(i),now2(i),before2(i),1)
@@ -3094,6 +3082,7 @@ integer, parameter :: ncache_optimal=8*1024
            !output: i1,i2,j3,(jp3)
 
            !Multiply with kernel in fourier space
+
            call multkernel(nd1,nd2,n1,n2,lot,nfft,j,pot(1,1,j3),zw(1,1,inzee))
 
            !TRANSFORM BACK IN REAL SPACE
@@ -3176,17 +3165,66 @@ integer, parameter :: ncache_optimal=8*1024
         end do
      endif
   end do
+
+  !De-allocations
+  deallocate(btrig1,stat=i_stat)
+  deallocate(ftrig1,stat=i_stat)
+  deallocate(after1,stat=i_stat)
+  deallocate(now1,stat=i_stat)
+  deallocate(before1,stat=i_stat)
+  deallocate(btrig2,stat=i_stat)
+  deallocate(ftrig2,stat=i_stat)
+  deallocate(after2,stat=i_stat)
+  deallocate(now2,stat=i_stat)
+  deallocate(before2,stat=i_stat)
+  deallocate(btrig3,stat=i_stat)
+  deallocate(ftrig3,stat=i_stat)
+  deallocate(after3,stat=i_stat)
+  deallocate(now3,stat=i_stat)
+  deallocate(before3,stat=i_stat)
+  deallocate(zmpi2,stat=i_stat)
+  deallocate(zw,stat=i_stat)
+  deallocate(zt,stat=i_stat)
+  deallocate(cosinarr,stat=i_stat)
+
 end subroutine F_PoissonSolver
 
-subroutine copy3Darray(n,source,dest)
-  implicit none
-  integer, intent(in) :: n
-  real(kind=8), dimension(n,n,n), intent(in) :: source
-  real(kind=8), dimension(n,n,n), intent(out) :: dest
+subroutine xc_energy(m1,m3,md1,md2,md3,nxc,nxt,nwbl,nxcl,rhopot,zf)
+    implicit none
+    integer, intent(in) :: m1,m3,md1,md2,md3,nxc,nxt,nwbl,nxcl
+    real(kind=8), dimension(m1,m3,nxt,1), intent(inout) :: rhopot
+    real(kind=8), dimension(md1,md3,md2), intent(out) :: zf
 
-  dest(1:n,1:n,1:n) = source(1:n,1:n,1:n)
+    integer :: offset
+    integer :: j1,j2,j3,jp2,jpp2
 
-end subroutine copy3Darray
+     offset=nwbl+1
+
+     do jp2=1,nxc
+        j2=offset+jp2+nxcl-2
+        jpp2=jp2
+        do j3=1,m3
+           do j1=1,m1
+              zf(j1,j3,jp2)=rhopot(j1,j3,j2,1)
+           end do
+           do j1=m1+1,md1
+              zf(j1,j3,jp2)=0.d0
+           end do
+        end do
+        do j3=m3+1,md3
+           do j1=1,md1
+              zf(j1,j3,jp2)=0.d0
+           end do
+        end do
+     end do
+     do jp2=nxc+1,md2
+        do j3=1,md3
+           do j1=1,md1
+              zf(j1,j3,jp2)=0.d0
+           end do
+        end do
+     end do
+end subroutine xc_energy
 
 subroutine PSolver(n01,hx,rhopot,karray,n1k,n2k,n3k)
   implicit none
@@ -3195,7 +3233,7 @@ subroutine PSolver(n01,hx,rhopot,karray,n1k,n2k,n3k)
   real(kind=8), dimension(n1k,n2k,n3k), intent(in) :: karray
   real(kind=8), dimension(*), intent(inout) :: rhopot
   !local variables
-  integer :: m1,m2,m3,md1,md2,md3,n1,n2,n3,nd1,nd2,nd3
+  integer :: ind,ind2,ind3,j2,i1,i2,i3,m1,m2,m3,md1,md2,md3,n1,n2,n3,nd1,nd2,nd3,nwbl,nwbr,nxcl,nxcr,nwb,nxt,nxc
   real(kind=8) :: scal
   real(kind=8), dimension(:,:,:), allocatable :: zf
 
@@ -3203,13 +3241,34 @@ subroutine PSolver(n01,hx,rhopot,karray,n1k,n2k,n3k)
 
     allocate(zf(md1,md3,md2))
 
-    call copy3Darray(n01,rhopot,zf)
+    nxc=min(md2,m2)
+
+    nwbl=0
+    nwbr=0
+    nxcl=1
+    nxcr=1
+
+    nwb=nxcl+nxc+nxcr-2
+    nxt=nwbr+nwb+nwbl
+
+    call xc_energy(m1,m3,md1,md2,md3,nxc,nxt,nwbl,nxcl,rhopot,zf)
 
     !this routine builds the values for each process of the potential (zf), multiplying by scal
     scal=hx*hx*hx/real(n1*n2*n3,kind=8)
+
     call F_PoissonSolver(n1,n2,n3,nd1,nd2,nd3,md1,md2,md3,karray,zf(1,1,1),scal)
 
-    call copy3Darray(n01,zf,rhopot)
+     do j2=1,nxc
+        i2=j2 !in this case the shift is always zero for a parallel run
+        ind3=(i2-1)*n01*n01
+        do i3=1,m3
+           ind2=(i3-1)*n01+ind3
+           do i1=1,m1
+              ind=i1+ind2
+              rhopot(ind)=zf(i1,i3,j2)
+           end do
+        end do
+     end do
 
 end subroutine PSolver
 
@@ -3231,6 +3290,7 @@ subroutine solve( n, potential )
     call F_FFT_dimensions(n,n,n,m1,m2,m3,n1,n2,n3,md1,md2,md3,nd1,nd2,nd3)
 
     allocate(karray(nd1,nd2,nd3))
+    karray=0
 
     itype_scf=14
 
