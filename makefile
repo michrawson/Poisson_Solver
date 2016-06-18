@@ -1,6 +1,7 @@
 
 #FFLAGS=-freal-4-real-8 -fPIC -O3 -march=native
-FFLAGS=-freal-4-real-8 -fPIC -fbounds-check -fbacktrace -Wall -Wextra  -pedantic  -fcheck=all -Warray-temporaries -fimplicit-none -ffree-line-length-0 -ffpe-trap=zero,overflow -finit-real=nan -Wconversion -pg -g -O0 -Wuninitialized    
+FFLAGS=-freal-4-real-8 -fPIC -fbounds-check -fbacktrace -Wall -Wextra  -pedantic  -fcheck=all -Warray-temporaries -fimplicit-none -ffree-line-length-0 -ffpe-trap=zero,overflow -finit-real=nan -Wconversion -O0 -Wuninitialized     
+#FFLAGS=-fbounds-check -O3 
 
 SRC08=$(wildcard *.f08)
 
@@ -17,10 +18,11 @@ SRC77=$(wildcard *.f)
 all : main.tsk fmodule.so
 
 main.tsk :
-	gfortran $(FFLAGS) $(SRC77) $(SRC90) $(SRC95) $(SRC03) $(SRC08) -o main.tsk
+	gfortran $(FFLAGS) $(SRC77) $(SRC90) $(SRC95) $(SRC03) $(SRC08) \
+	-o main.tsk 
 
 fmodule.so :
-	f2py --fcompiler=gfortran -c $(SRC77) $(SRC90) -m fmodule
+	f2py --fcompiler=gfortran -c $(SRC90) -m fmodule
 # --debug-capi
 
 %.o : %.f95
@@ -30,6 +32,7 @@ fmodule.so :
 	gfortran -c $(FFLAGS) $< -o $@
 
 clean:
-	rm -f *.mod *.o *.so *.tsk *.tsk.dSYM *.so.dSYM
+	( cd Shidong_Poisson; make clean )
+	rm -f *.mod *.o *.so *.tsk
 	
 	

@@ -1689,70 +1689,66 @@ subroutine ctrig(n,trig,after,before,now,isign,ic)
 
 end subroutine ctrig
 
-subroutine test_functions(n01,n02,n03,a_gauss,hx,hy,hz,density,potential)
+
+subroutine trap_weights(nterms,p,w)
   implicit none
-  integer, intent(in) :: n01,n02,n03
-  real(kind=8), intent(in) :: a_gauss,hx,hy,hz
-  real(kind=8), dimension(n01,n02,n03), intent(out) :: density,potential
+  integer :: nterms, b, a, k
+  real(kind=8) :: p(nterms),w(nterms),h
 
-  !local variables
-  integer :: i1,i2,i3
-  real(kind=8) :: x1,x2,x3,pi,a2,derf,factor,r,r2
+    b=20
+    a=-25
+    h=real(b-a,kind=8)/real(nterms,kind=8)
 
-     !grid for the free BC case
-     !hgrid=max(hx,hy,hz)
+    do k=1,nterms
+        p(k) = exp(2*(a+(k-1)*h))
+        w(k) = 2.0d0/gamma(0.5d0)*exp(a+(k-1)*h)*h
+    end do
 
-     pi = 4.d0*atan(1.d0)
-     a2 = a_gauss**2
+end subroutine trap_weights
 
-     !Normalization
-     factor = 1.d0/(a_gauss*a2*pi*sqrt(pi))
-     !gaussian function
-     do i3=1,n03
-        x3 = hz*real(i3-n03/2,kind=8)
-        do i2=1,n02
-           x2 = hy*real(i2-n02/2,kind=8)
-           do i1=1,n01
-              x1 = hx*real(i1-n01/2,kind=8)
-              r2 = x1*x1+x2*x2+x3*x3
-              density(i1,i2,i3) = factor*exp(-r2/a2)
-              r = sqrt(r2)
-              !Potential from a gaussian
-              if (r == 0.d0) then
-                 potential(i1,i2,i3) = 2.d0/(sqrt(pi)*a_gauss)
-              else
-                 potential(i1,i2,i3) = derf(r/a_gauss)/r
-              end if
-           end do
-        end do
-     end do
-end subroutine test_functions
+subroutine test_weights(nterms,p,w)
+  implicit none
+  integer, parameter :: l=100000
+  integer :: nterms, i
+  real(kind=8) :: p(nterms),w(nterms),x(l),xe(l)
+
+    x = (/ ((8.0d0*i/real(l)-8.0d0),i=1, l) /)
+    x = 10.0d0**x
+
+    xe = 0
+    do i = 1, l
+        xe(i) = DOT_PRODUCT(w,exp(-p*x(i)**2.0d0))
+    end do
+
+    print *,"test_weights:",maxval(abs(1-x*xe))
+
+end subroutine test_weights
 
 subroutine gequad(nterms,p,w)
 !
-  implicit none
-  integer :: nterms
-  real(kind=8) :: p(nterms),w(nterms)
+implicit none
+integer :: nterms
+real(kind=8) :: p(nterms),w(nterms)
 !
 !       range [10^(-9),1] and accuracy ~10^(-8);
 !
-  p(1)=4.96142640560223544d19
-  p(2)=1.37454269147978052d19
-  p(3)=7.58610013441204679d18
-  p(4)=4.42040691347806996d18
-  p(5)=2.61986077948367892d18
-  p(6)=1.56320138155496681d18
-  p(7)=9.35645215863028402d17
-  p(8)=5.60962910452691703d17
-  p(9)=3.3666225119686761d17
-  p(10)=2.0218253197947866d17
-  p(11)=1.21477756091902017d17
-  p(12)=7.3012982513608503d16
-  p(13)=4.38951893556421099d16
-  p(14)=2.63949482512262325d16
-  p(15)=1.58742054072786174d16
-  p(16)=9.54806587737665531d15
-  p(17)=5.74353712364571709d15
+p(1)=4.96142640560223544d19
+p(2)=1.37454269147978052d19
+p(3)=7.58610013441204679d18
+p(4)=4.42040691347806996d18
+p(5)=2.61986077948367892d18
+p(6)=1.56320138155496681d18
+p(7)=9.35645215863028402d17
+p(8)=5.60962910452691703d17
+p(9)=3.3666225119686761d17
+p(10)=2.0218253197947866d17
+p(11)=1.21477756091902017d17
+p(12)=7.3012982513608503d16
+p(13)=4.38951893556421099d16
+p(14)=2.63949482512262325d16
+p(15)=1.58742054072786174d16
+p(16)=9.54806587737665531d15
+p(17)=5.74353712364571709d15
   p(18)=3.455214877389445d15
   p(19)=2.07871658520326804d15
   p(20)=1.25064667315629928d15
@@ -2258,23 +2254,15 @@ subroutine F_FFT_dimensions(n01,n02,n03,m1,m2,m3,n1,n2,n3,md1,md2,md3,nd1,nd2,nd
  md1=n1/2
  md2=n2/2
  md3=n3/2
-151 if (1*(md2).lt.n2/2) then
-    md2=md2+1
-    goto 151
- endif
 
  !dimensions of the kernel, 1/8 of the total volume,
- !compatible with 1
+ !compatible with nproc
  nd1=n1/2+1
  nd2=n2/2+1
  nd3=n3/2+1
 
-250 if (modulo(nd3,1) .ne. 0) then
-    nd3=nd3+1
-    goto 250
- endif
-
 end subroutine F_FFT_dimensions
+
 
 subroutine back_trans_14(nd,nt,x,y)
   implicit none
@@ -2432,7 +2420,6 @@ end subroutine scf_recursion
 
 subroutine Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
      hx,hy,hz,itype_scf,karray)
-
  implicit none
 
  !Arguments
@@ -2442,7 +2429,7 @@ subroutine Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
 
  !Local variables
  !Do not touch !!!!
- integer, parameter :: n_gauss = 89
+ integer, parameter :: n_gauss = 89 ! 225
  !Better if higher (1024 points are enough 10^{-14}: 2*itype_scf*n_points)
  integer, parameter :: n_points = 2**6
 
@@ -2458,9 +2445,9 @@ subroutine Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
 
  real(kind=8) :: pgauss,kern,a_range
  real(kind=8) :: factor,factor2,dx,absci,p0gauss,p0_cell
- real(kind=8) :: a1,a2,a3,hgrid
+ real(kind=8) :: a1,a2,a3,hgrid,pi
  integer :: n_scf,nker1,nker2,nker3
- integer :: i_gauss,n_range,n_cell,istart,iend,istart1
+ integer :: i_gauss,n_range,n_cell,iend,istart1
  integer :: i,n_iter,i1,i2,i3,i_kern,i_stat
  integer :: i01,i02,i03,n1h,n2h,n3h
 
@@ -2489,8 +2476,7 @@ subroutine Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
  !defining proper extremes for the calculation of the
  !local part of the kernel
 
- istart=1
- iend=min((1)*nker2,n2h+n03)
+ iend=min(nker2,n2h+n03)
 
  istart1=n2h-n03+2
 
@@ -2513,8 +2499,13 @@ subroutine Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
  a3 = hz * real(n03,kind=8)
 
 
+! call trap_weights(n_gauss,p_gauss,w_gauss)
+
  !Initialization of the gaussian (Beylkin)
  call gequad(n_gauss,p_gauss,w_gauss)
+
+ call test_weights(n_gauss,p_gauss,w_gauss)
+
  !In order to have a range from a_range=sqrt(a1*a1+a2*a2+a3*a3)
  !(biggest length in the cube)
  !We divide the p_gauss by a_range**2 and a_gauss by a_range
@@ -2547,6 +2538,8 @@ subroutine Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
 
        !We calculate the number of iterations to go from pgauss to p0_ref
        n_iter = nint((log(pgauss) - log(p0_cell))/log(4.d0))
+
+!       n_iter = nint((log(pgauss))/log(4.d0))
        if (n_iter <= 0)then
           n_iter = 0
           p0gauss = pgauss
@@ -2566,10 +2559,10 @@ subroutine Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
           end do
           kernel_scf(i_kern,1) = kern*dx
           kernel_scf(-i_kern,1) = kern*dx
-          if (abs(kern) < 1.d-18) then
-             !Too small not useful to calculate
-             exit
-          end if
+!          if (abs(kern) < 1.d-18) then
+!             !Too small not useful to calculate
+!             exit
+!          end if
        end do
 
        !Start the iteration to go from p0gauss to pgauss
@@ -2583,7 +2576,8 @@ subroutine Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
              i02 = i2-1
              do i1=1,n01
                 i01 = i1-1
-                kp(i1,i2,i3-istart+1) = kp(i1,i2,i3-istart+1) + w_gauss(i_gauss)* &
+
+                kp(i1,i2,i3) = kp(i1,i2,i3) + w_gauss(i_gauss)* &
                      kernel_scf(i01,1)*kernel_scf(i02,1)*kernel_scf(i03,1)
              end do
           end do
@@ -2595,7 +2589,10 @@ subroutine Kernel(n01,n02,n03,nfft1,nfft2,nfft3,n1k,n2k,n3k,&
 
 !!$ if(0 .eq. 0) print *,"Do a 3D PHalFFT for the kernel"
 
- call kernelfft(nfft1,nfft2,nfft3,nker1,nker2,nker3,n1k,n2k,n3k,&
+pi = 4.d0*atan(1.d0)
+kp = -1.0*kp/pi/4.0;
+
+call kernelfft(nfft1,nfft2,nfft3,nker1,nker2,nker3,n1k,n2k,n3k,&
       kp,karray)
 
 end subroutine Kernel
@@ -2614,7 +2611,7 @@ subroutine PS_dim4allocation(n01,n02,n03,n3d,n3p,n3pi,i3xcsh,i3s)
 
   !formal start and end of the slice
   istart=0
-  iend=min((1)*md2,m2)
+  iend=min(md2,m2)
 
      n3d=n03
      n3p=n03
@@ -3189,41 +3186,40 @@ integer, parameter :: ncache_optimal=8*1024
 
 end subroutine F_PoissonSolver
 
-subroutine xc_energy(m1,m3,md1,md2,md3,nxc,nxt,nwbl,nxcl,rhopot,zf)
+subroutine xc_energy(m1,m3,md1,md2,md3,nxc,nxt,rhopot,zf)
     implicit none
-    integer, intent(in) :: m1,m3,md1,md2,md3,nxc,nxt,nwbl,nxcl
+    integer, intent(in) :: m1,m3,md1,md2,md3,nxc,nxt
     real(kind=8), dimension(m1,m3,nxt,1), intent(inout) :: rhopot
     real(kind=8), dimension(md1,md3,md2), intent(out) :: zf
 
-    integer :: offset
     integer :: j1,j2,j3,jp2,jpp2
 
-     offset=nwbl+1
+    zf(:,:,:)=0
 
      do jp2=1,nxc
-        j2=offset+jp2+nxcl-2
-        jpp2=jp2
+!        j2=jp2
+!        jpp2=jp2
         do j3=1,m3
            do j1=1,m1
-              zf(j1,j3,jp2)=rhopot(j1,j3,j2,1)
+              zf(j1,j3,jp2)=rhopot(j1,j3,jp2,1)
            end do
-           do j1=m1+1,md1
-              zf(j1,j3,jp2)=0.d0
-           end do
+!           do j1=m1+1,md1
+!              zf(j1,j3,jp2)=0.d0
+!           end do
         end do
-        do j3=m3+1,md3
-           do j1=1,md1
-              zf(j1,j3,jp2)=0.d0
-           end do
-        end do
+!        do j3=m3+1,md3
+!           do j1=1,md1
+!              zf(j1,j3,jp2)=0.d0
+!           end do
+!        end do
      end do
-     do jp2=nxc+1,md2
-        do j3=1,md3
-           do j1=1,md1
-              zf(j1,j3,jp2)=0.d0
-           end do
-        end do
-     end do
+!     do jp2=nxc+1,md2
+!        do j3=1,md3
+!           do j1=1,md1
+!              zf(j1,j3,jp2)=0.d0
+!           end do
+!        end do
+!     end do
 end subroutine xc_energy
 
 subroutine PSolver(n01,hx,rhopot,karray,n1k,n2k,n3k)
@@ -3231,9 +3227,9 @@ subroutine PSolver(n01,hx,rhopot,karray,n1k,n2k,n3k)
   integer, intent(in) :: n01,n1k,n2k,n3k
   real(kind=8), intent(in) :: hx
   real(kind=8), dimension(n1k,n2k,n3k), intent(in) :: karray
-  real(kind=8), dimension(*), intent(inout) :: rhopot
+  real(kind=8), dimension(n01,n01,n01), intent(inout) :: rhopot
   !local variables
-  integer :: ind,ind2,ind3,j2,i1,i2,i3,m1,m2,m3,md1,md2,md3,n1,n2,n3,nd1,nd2,nd3,nwbl,nwbr,nxcl,nxcr,nwb,nxt,nxc
+  integer :: ind,ind2,ind3,j2,i1,i2,i3,m1,m2,m3,md1,md2,md3,n1,n2,n3,nd1,nd2,nd3,nwb,nxt,nxc
   real(kind=8) :: scal
   real(kind=8), dimension(:,:,:), allocatable :: zf
 
@@ -3243,15 +3239,10 @@ subroutine PSolver(n01,hx,rhopot,karray,n1k,n2k,n3k)
 
     nxc=min(md2,m2)
 
-    nwbl=0
-    nwbr=0
-    nxcl=1
-    nxcr=1
+    nwb=1+nxc+1-2
+    nxt=0+nwb
 
-    nwb=nxcl+nxc+nxcr-2
-    nxt=nwbr+nwb+nwbl
-
-    call xc_energy(m1,m3,md1,md2,md3,nxc,nxt,nwbl,nxcl,rhopot,zf)
+    call xc_energy(m1,m3,md1,md2,md3,nxc,nxt,rhopot,zf)
 
     !this routine builds the values for each process of the potential (zf), multiplying by scal
     scal=hx*hx*hx/real(n1*n2*n3,kind=8)
@@ -3259,37 +3250,43 @@ subroutine PSolver(n01,hx,rhopot,karray,n1k,n2k,n3k)
     call F_PoissonSolver(n1,n2,n3,nd1,nd2,nd3,md1,md2,md3,karray,zf(1,1,1),scal)
 
      do j2=1,nxc
-        i2=j2 !in this case the shift is always zero for a parallel run
-        ind3=(i2-1)*n01*n01
+        i2=j2
+!        ind3=(i2-1)*n01*n01
         do i3=1,m3
-           ind2=(i3-1)*n01+ind3
+!           ind2=(i3-1)*n01+ind3
            do i1=1,m1
-              ind=i1+ind2
-              rhopot(ind)=zf(i1,i3,j2)
+!              ind=i1+ind2
+!              rhopot(ind)=zf(i1,i3,j2)
+              rhopot(i1,i3,i2)=zf(i1,i3,j2)
            end do
         end do
      end do
 
 end subroutine PSolver
 
-subroutine solve( n, potential )
+subroutine solve( n, hx, density, potential )
     integer, intent(in)                                 :: n
-    real ( kind = 8 ), dimension(n,n,n), intent(inout)      :: potential
+    real ( kind = 8 ), dimension(n,n,n), intent(in)  :: density
+    real ( kind = 8 ), dimension(n,n,n), intent(out)  :: potential
 
     real(kind=8), dimension(:,:,:), allocatable :: karray
     real(kind=8) :: hx,hy,hz,hgrid
     integer :: m1,m2,m3,md1,md2,md3,nd1,nd2,nd3,n1,n2,n3,itype_scf
     integer :: n3d,n3p,n3pi,i3xcsh,i3s
 
-    hx=10.0/real(n,kind=8)
-    hy=10.0/real(n,kind=8)
-    hz=10.0/real(n,kind=8)
+    real :: start, finish
+
+    call cpu_time(start)
+
+    hy=hx
+    hz=hx
 
     hgrid=max(hx,hy,hz)
 
     call F_FFT_dimensions(n,n,n,m1,m2,m3,n1,n2,n3,md1,md2,md3,nd1,nd2,nd3)
 
     allocate(karray(nd1,nd2,nd3))
+
     karray=0
 
     itype_scf=14
@@ -3299,8 +3296,13 @@ subroutine solve( n, potential )
     !dimension needed for allocations
     call PS_dim4allocation(n,n,n,n3d,n3p,n3pi,i3xcsh,i3s)
 
+    potential(:,:,:) = density(:,:,:)
+
     !apply the Poisson Solver
     call PSolver(n,hx,potential,karray,nd1,nd2,nd3)
+
+    call cpu_time(finish)
+    print *,'Time = ',finish-start
 
 end subroutine solve
 
